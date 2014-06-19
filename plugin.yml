@@ -1,0 +1,49 @@
+name: wwProtect
+main: wrewolf\wwProtect\Main
+version: "1.0"
+author: WreWolf
+api: "1.0.0"
+
+commands:
+ protect:
+  permission: wwProtect.command.protect
+  description: Shows list wwProtector commands
+  usage: "/protect <pos1|pos2|   > [<g> <Group Name>] [<share> <Group Name>] [<pvp> <on|off>] [<lock> <on|off>]"
+ sprotect:
+  permission: wwProtect.command.sprotect
+  description: Special console command
+  usage: "/sprotect <nick> <level> <x1> <y1> <z1> <x2> <y2> <z2>"
+ group:
+  permission: wwGroups.command.group
+  description: Shows list wwGroups commands
+  usage: "/group <ls|add|rm> <user> <group>
+  /group <ls|add|rm> <group>"
+
+
+
+permissions:
+ wwProtect:
+  default: op
+  description: Allows all commands of wwProtect
+  children:
+   wwProtect.command:
+    default: op
+    description: Allows using all the wwProtect commands
+    children:
+     wwProtect.command.sprotect:
+      default: op
+      description: Allows setting a specyal protect
+     wwProtect.command.protect:
+      default: true #allowed for everyone
+      description: Allows create new private area
+ wwGroups:
+  default: op
+  description: Allows all commands of wwGroups
+  children:
+   wwGroups.command:
+    default: op
+    description: Allows using all the wwGroups commands
+    children:
+     wwGroups.command.group:
+      default: true
+      description: Allows players to wwProtect.group command

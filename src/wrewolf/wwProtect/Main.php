@@ -71,6 +71,8 @@
          }
          $rez          = $this->db->query("SELECT * FROM groups");
          $this->groups = array();
+         if(!$rez->num_rows)
+            return;
          while($row = $rez->fetch_assoc()) {
             $this->groups[$row['name']] = json_decode($row['members'], true);
             //$this->getLogger()->info(implode(', ', $row));

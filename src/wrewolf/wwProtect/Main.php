@@ -33,8 +33,6 @@
          $this->db = new \mysqli(null, $this->user, $this->password, $this->name, 3306, $this->socket);
 
          $this->reload();
-         //$this->config= new Config($this->getDataFolder() . "areas.yml");
-         //$this->groups= new Config($this->getDataFolder() . "groups.yml");
 
          //Command protect
          $command_protect = new PluginCommand("protect", $this);
@@ -73,8 +71,8 @@
          $rez          = $this->db->query("SELECT * FROM groups");
          $this->groups = array();
          if(!$rez->num_rows)
-	    return;
-	 while($row = $rez->fetch_assoc()) {
+            return;
+         while($row = $rez->fetch_assoc()) {
             $this->groups[$row['name']] = json_decode($row['members'], true);
             //$this->getLogger()->info(implode(', ', $row));
          }
@@ -99,33 +97,38 @@
       public function onCommand(CommandSender $sender, Command $command, $label, array $args)
       {
          $user = strtolower($sender->getName());
-         $this->getLogger()->info(print_r($args,true));
+         //$this->getLogger()->info(print_r($args, true));
          if($sender->getName() !== "CONSOLE") {
             $player = $sender->getServer()->getPlayer($sender->getName());
-            $level  = $sender->getServer()->getPlayer($sender->getName())->getLevel()->getName();
+            $level  = strtolower($sender->getServer()->getPlayer($sender->getName())->getLevel()->getName());
             $mode   = '';
             switch($command->getName()) {
                case "protect":
                   if(count($args) == 1) {
+                     //$this->getLogger()->info("Args == 1");
                      $args = strtolower($args[0]);
                      if($args == 'pos1') {
-                        if(! isset($this->tmp_store[$user])) $this->tmp_store[$user] = array();
+                        if(!isset($this->tmp_store[$user])) $this->tmp_store[$user] = array();
                         $this->tmp_store[$user][1] = array(0 => $player->getFloorX(), 1 => $player->getFloorY(), 2 => $player->getFloorZ(), 'level' => $player->getLevel()->getName());
-                        $sender->sendMessage("protect first point: " . implode(", ",$this->tmp_store[$user][1] ));
+                        $sender->sendMessage("protect first point: " . implode(", ", $this->tmp_store[$user][1]));
+                        return true;
                      } else if($args == 'pos2') {
-                        if(! isset($this->tmp_store[$user])) $this->tmp_store[$user] = array();
+                        if(!isset($this->tmp_store[$user])) $this->tmp_store[$user] = array();
                         $this->tmp_store[$user][2] = array(0 => $player->getFloorX(), 1 => $player->getFloorY(), 2 => $player->getFloorZ(), 'level' => $player->getLevel()->getName());
-                        $sender->sendMessage("protect two point: " . implode(", ",$this->tmp_store[$user][2] ));
+                        $sender->sendMessage("protect two point: " . implode(", ", $this->tmp_store[$user][2]));
+                        return true;
                      } else if($args == 'g') {
                         $sender->sendMessage(TextFormat::RED . "/protect g: <Group Name>\n\tplease set group name");
+                        return true;
                      } else {
                         $sender->sendMessage($command->getUsage());
+                        return true;
                      }
-                     return;
                   } else if(count($args) == 2) {
+                    // $this->getLogger()->info("Args == 2");
                      $mode  = strtolower(array_shift($args));
                      $group = strtolower(array_shift($args));
-                  } 
+                  }
                   if(count($args) == 0 || $mode == 'g') {
                      $this->getLogger()->info("Pos1: " . implode(", ", $this->tmp_store[$user][1]));
                      $this->getLogger()->info("Pos2: " . implode(", ", $this->tmp_store[$user][2]));
@@ -150,7 +153,7 @@
                         $this->config[$level]["g:" . $group] = array("protect" => true, "min" => $min, "max" => $max);
                      }
 
-                     if(! $sender->getServer()->isOp($sender->getName()))
+                     if(!$sender->getServer()->isOp($sender->getName()))
                         if(($maxX - $minX) * ($maxY - $minY) * ($maxZ - $minZ) >= 12000) {
                            $sender->sendMessage(TextFormat::GOLD . "[wwProtect] Can't protect. Max area 12000 blocks (e.g. 15x28x28)");
                            break;
@@ -317,21 +320,31 @@
        *
        * @priority MONITOR
        */
-      public function onBlockBreak(BlockBreakEvent $event){
-          if($event->getPlayer() instanceof Player and !$this->checkProtect($event->getPlayer(), $event->getBlock())){
-              $event->setCancelled(true);
-          }
+      public function onBlockBreak(BlockBreakEvent $event)
+      {
+         //$this->getLogger()->info("BlockBreakEvent " . $event->getPlayer()->getName() . " ");
+         if(!$this->checkProtect($event->getPlayer(), $event->getBlock())) {
+            //$this->getLogger()->info("BlockBreakEvent canceling");
+            $event->setCancelled(true);
+         } else {
+            //$this->getLogger()->info("BlockBreakEvent aproved");
+         }
       }
-    
+
       /**
        * @param BlockPlaceEvent $event
        *
        * @priority MONITOR
        */
-      public function onBlockPlace(BlockPlaceEvent $event){
-          if($event->getPlayer() instanceof Player and !$this->checkProtect($event->getPlayer(), $event->getBlock())){
-              $event->setCancelled(true);
-          }
+      public function onBlockPlace(BlockPlaceEvent $event)
+      {
+         //$this->getLogger()->info("BlockPlaceEvent " . $event->getPlayer()->getName() . " ");
+         if(!$this->checkProtect($event->getPlayer(), $event->getBlock())) {
+            //$this->getLogger()->info("BlockPlaceEvent canceling");
+            $event->setCancelled(true);
+         } else {
+           // $this->getLogger()->info("BlockPlaceEvent aproved");
+         }
       }
 
       /**
@@ -339,42 +352,53 @@
        *
        * @priority MONITOR
        */
-      public function onPlayerInteract(PlayerInteractEvent $event){
-          if($event->getPlayer() instanceof Player and !$this->checkProtect($event->getPlayer(), $event->getBlock())){
-              $event->setCancelled(true);
-          }
+      public function onPlayerInteract(PlayerInteractEvent $event)
+      {
+         //$this->getLogger()->info("PlayerInteractEvent " . $event->getPlayer()->getName() . " ");
+         if(!$this->checkProtect($event->getPlayer(), $event->getBlock())) {
+            //$this->getLogger()->info("PlayerInteractEvent canceling");
+            $event->setCancelled(true);
+         } else {
+         //   $this->getLogger()->info("PlayerInteractEvent aproved");
+         }
       }
+
       private function checkProtect(Player $player, $block)
       {
-
-         $level = $player->getLevel()->getName();
-         if(isset($this->config) && isset($this->config[$level]))
+         $level = strtolower($player->getLevel()->getName());
+         if(isset($this->config) && isset($this->config[$level])) {
             foreach($this->config[$level] as $name => $config) {
-               if(! $config['protect'] or $name == $player->getName())
+               //$this->getLogger()->info("[wwProtect] " . print_r($config));
+               if(!$config['protect'] or $name == strtolower($player->getName()))
                   continue;
                if($this->checkCoordinates($player, $block, $name))
                   return false;
             }
+         } else {
+            $this->getLogger()->info("[wwProtect] Config error or not created for level $level");
+         }
          return true;
       }
 
       private function checkCoordinates(Player $player, $block, $name)
       {
          //Спецгруппа Sa
-         if(isset($this->groups['Sa'])){
+         if(isset($this->groups['Sa'])) {
             if(in_array(strtolower($player->getName()), $this->groups['Sa'])) {
+               //$this->getLogger()->info("[wwProtect] SA access");
                return false;
             }
-        }
+         }
          $level = strtolower($player->getLevel()->getName());
-         if(isset($this->config[$level])){
+         //$this->getLogger()->info("[wwProtect] ".print_r($this->config[$level][$name]));
+         if(isset($this->config[$level])) {
             if($this->config[$level][$name]['min'][0] <= $block->getFloorX() and $block->getFloorX() <= $this->config[$level][$name]['max'][0]) {
                if($this->config[$level][$name]['min'][1] <= $block->getFloorY() and $block->getFloorY() <= $this->config[$level][$name]['max'][1]) {
                   if($this->config[$level][$name]['min'][2] <= $block->getFloorZ() and $block->getFloorZ() <= $this->config[$level][$name]['max'][2]) {
                      if(substr($name, 0, 2) == "g:") {
                         //Группы храним в отдельной таблице но вместе с основным кодом
                         if(isset($this->groups[substr($name, 2)]) && is_array($this->groups[substr($name, 2)]))
-                           if(! in_array(strtolower($player->getName()), $this->groups[substr($name, 2)])) {
+                           if(!in_array(strtolower($player->getName()), $this->groups[substr($name, 2)])) {
                               $name = substr($name, 2);
                               $player->sendMessage("[wwProtect] This is Group $name's private area.");
                               return true;

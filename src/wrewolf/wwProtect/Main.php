@@ -5,6 +5,7 @@
    use pocketmine\command\Command;
    use pocketmine\command\CommandSender;
    use pocketmine\command\PluginCommand;
+   use pocketmine\event\player\PlayerInteractEvent;
    use pocketmine\event\block\BlockBreakEvent;
    use pocketmine\event\block\BlockPlaceEvent;
    use pocketmine\event\Listener;
@@ -71,7 +72,9 @@
          }
          $rez          = $this->db->query("SELECT * FROM groups");
          $this->groups = array();
-         while($row = $rez->fetch_assoc()) {
+         if(!$rez->num_rows)
+	    return;
+	 while($row = $rez->fetch_assoc()) {
             $this->groups[$row['name']] = json_decode($row['members'], true);
             //$this->getLogger()->info(implode(', ', $row));
          }
@@ -96,7 +99,7 @@
       public function onCommand(CommandSender $sender, Command $command, $label, array $args)
       {
          $user = strtolower($sender->getName());
-         $this->getLogger()->info(implode(", ", $args));
+         $this->getLogger()->info(print_r($args,true));
          if($sender->getName() !== "CONSOLE") {
             $player = $sender->getServer()->getPlayer($sender->getName());
             $level  = $sender->getServer()->getPlayer($sender->getName())->getLevel()->getName();
@@ -108,18 +111,21 @@
                      if($args == 'pos1') {
                         if(! isset($this->tmp_store[$user])) $this->tmp_store[$user] = array();
                         $this->tmp_store[$user][1] = array(0 => $player->getFloorX(), 1 => $player->getFloorY(), 2 => $player->getFloorZ(), 'level' => $player->getLevel()->getName());
+                        $sender->sendMessage("protect first point: " . implode(", ",$this->tmp_store[$user][1] ));
                      } else if($args == 'pos2') {
                         if(! isset($this->tmp_store[$user])) $this->tmp_store[$user] = array();
                         $this->tmp_store[$user][2] = array(0 => $player->getFloorX(), 1 => $player->getFloorY(), 2 => $player->getFloorZ(), 'level' => $player->getLevel()->getName());
+                        $sender->sendMessage("protect two point: " . implode(", ",$this->tmp_store[$user][2] ));
                      } else if($args == 'g') {
                         $sender->sendMessage(TextFormat::RED . "/protect g: <Group Name>\n\tplease set group name");
                      } else {
                         $sender->sendMessage($command->getUsage());
                      }
+                     return;
                   } else if(count($args) == 2) {
                      $mode  = strtolower(array_shift($args));
                      $group = strtolower(array_shift($args));
-                  }
+                  } 
                   if(count($args) == 0 || $mode == 'g') {
                      $this->getLogger()->info("Pos1: " . implode(", ", $this->tmp_store[$user][1]));
                      $this->getLogger()->info("Pos2: " . implode(", ", $this->tmp_store[$user][2]));
@@ -307,42 +313,37 @@
       }
 
       /**
+       * @param BlockBreakEvent $event
+       *
+       * @priority MONITOR
+       */
+      public function onBlockBreak(BlockBreakEvent $event){
+          if($event->getPlayer() instanceof Player and !$this->checkProtect($event->getPlayer(), $event->getBlock())){
+              $event->setCancelled(true);
+          }
+      }
+    
+      /**
        * @param BlockPlaceEvent $event
        *
-       * @priority        HIGHEST
-       * @ignoreCancelled false
+       * @priority MONITOR
        */
-      public function onBlockPlaceEvent(BlockPlaceEvent $event)
-      {
-         $player = $event->getPlayer();
-         $block  = $event->getBlock();
-         //$message = "U place " . $block->getName() . " on (" . $block->getFloorX() . ', ' . $block->getFloorY() . ', ' . $block->getFloorZ() . ') ';
-         //$this->getLogger()->info($message);
-         //$player->sendMessage($message);
-         if(! $this->checkProtect($player, $block)) {
-            $event->setCancelled(true);
-         }
+      public function onBlockPlace(BlockPlaceEvent $event){
+          if($event->getPlayer() instanceof Player and !$this->checkProtect($event->getPlayer(), $event->getBlock())){
+              $event->setCancelled(true);
+          }
       }
 
       /**
-       * @param BlockBreakEvent $event
+       * @param PlayerInteractEvent $event
        *
-       * @priority        HIGHEST
-       * @ignoreCancelled false
+       * @priority MONITOR
        */
-      public function onBlockBreakEvent(BlockBreakEvent $event)
-      {
-         $player = $event->getPlayer();
-         $block  = $event->getBlock();
-
-         //$message = "U break" . $block->getName() . " on (" . $block->getFloorX() . ', ' . $block->getFloorY() . ', ' . $block->getFloorZ() . ') ';
-         //$player->sendMessage($message);
-         //$this->getLogger()->info($message);
-         if(! $this->checkProtect($player, $block)) {
-            $event->setCancelled(true);
-         }
+      public function onPlayerInteract(PlayerInteractEvent $event){
+          if($event->getPlayer() instanceof Player and !$this->checkProtect($event->getPlayer(), $event->getBlock())){
+              $event->setCancelled(true);
+          }
       }
-
       private function checkProtect(Player $player, $block)
       {
 
@@ -360,26 +361,28 @@
       private function checkCoordinates(Player $player, $block, $name)
       {
          //Спецгруппа Sa
-         if(isset($this->groups['Sa']))
+         if(isset($this->groups['Sa'])){
             if(in_array(strtolower($player->getName()), $this->groups['Sa'])) {
                return false;
             }
+        }
          $level = strtolower($player->getLevel()->getName());
-
-         if($this->config[$level][$name]['min'][0] <= $block->getFloorX() and $block->getFloorX() <= $this->config[$level][$name]['max'][0]) {
-            if($this->config[$level][$name]['min'][1] <= $block->getFloorY() and $block->getFloorY() <= $this->config[$level][$name]['max'][1]) {
-               if($this->config[$level][$name]['min'][2] <= $block->getFloorZ() and $block->getFloorZ() <= $this->config[$level][$name]['max'][2]) {
-                  if(substr($name, 0, 2) == "g:") {
-                     //Группы храним в отдельной таблице но вместе с основным кодом
-                     if(isset($this->groups[substr($name, 2)]) && is_array($this->groups[substr($name, 2)]))
-                        if(! in_array(strtolower($player->getName()), $this->groups[substr($name, 2)])) {
-                           $name = substr($name, 2);
-                           $player->sendMessage("[wwProtect] This is Group $name's private area.");
-                           return true;
-                        }
-                  } else {
-                     $player->sendMessage("[wwProtect] This is $name's private area.");
-                     return true;
+         if(isset($this->config[$level])){
+            if($this->config[$level][$name]['min'][0] <= $block->getFloorX() and $block->getFloorX() <= $this->config[$level][$name]['max'][0]) {
+               if($this->config[$level][$name]['min'][1] <= $block->getFloorY() and $block->getFloorY() <= $this->config[$level][$name]['max'][1]) {
+                  if($this->config[$level][$name]['min'][2] <= $block->getFloorZ() and $block->getFloorZ() <= $this->config[$level][$name]['max'][2]) {
+                     if(substr($name, 0, 2) == "g:") {
+                        //Группы храним в отдельной таблице но вместе с основным кодом
+                        if(isset($this->groups[substr($name, 2)]) && is_array($this->groups[substr($name, 2)]))
+                           if(! in_array(strtolower($player->getName()), $this->groups[substr($name, 2)])) {
+                              $name = substr($name, 2);
+                              $player->sendMessage("[wwProtect] This is Group $name's private area.");
+                              return true;
+                           }
+                     } else {
+                        $player->sendMessage("[wwProtect] This is $name's private area.");
+                        return true;
+                     }
                   }
                }
             }

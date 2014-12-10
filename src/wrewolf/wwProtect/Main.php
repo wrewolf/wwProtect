@@ -154,8 +154,8 @@
                      }
 
                      if(!$sender->getServer()->isOp($sender->getName()))
-                        if(($maxX - $minX) * ($maxY - $minY) * ($maxZ - $minZ) >= 12000) {
-                           $sender->sendMessage(TextFormat::GOLD . "[wwProtect] Can't protect. Max area 12000 blocks (e.g. 15x28x28)");
+                        if(($maxX - $minX) * ($maxY - $minY) * ($maxZ - $minZ) >= 125000) {
+                           $sender->sendMessage(TextFormat::GOLD . "[wwProtect] Can't protect. Max area 125000 blocks (e.g. 50x50x50)");
                            break;
                         }
                      $members = json_encode(array($user));

@@ -7,10 +7,10 @@ MCPE protect plugin for new API based on PrivateAreaProtector by Omattyao
 * multiworld
 * superadmin group (place, break in anywhere)
 * users group (personal, and grouped private regions)
-
+* Door, Chest, locked in region
 TODO:
 * on/off PVP on region
-* on/off Interact (Door, Chest, Fuel, etc. lock in region)
+* on/off Interact ( Fuel, etc. lock in region)
 
 #commands#
 

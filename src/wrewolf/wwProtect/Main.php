@@ -33,8 +33,6 @@
          $this->db = new \mysqli(null, $this->user, $this->password, $this->name, 3306, $this->socket);
 
          $this->reload();
-         //$this->config= new Config($this->getDataFolder() . "areas.yml");
-         //$this->groups= new Config($this->getDataFolder() . "groups.yml");
 
          //Command protect
          $command_protect = new PluginCommand("protect", $this);
@@ -73,8 +71,8 @@
          $rez          = $this->db->query("SELECT * FROM groups");
          $this->groups = array();
          if(!$rez->num_rows)
-	    return;
-	 while($row = $rez->fetch_assoc()) {
+            return;
+         while($row = $rez->fetch_assoc()) {
             $this->groups[$row['name']] = json_decode($row['members'], true);
             //$this->getLogger()->info(implode(', ', $row));
          }
@@ -99,34 +97,73 @@
       public function onCommand(CommandSender $sender, Command $command, $label, array $args)
       {
          $user = strtolower($sender->getName());
-         $this->getLogger()->info(print_r($args,true));
+         //$this->getLogger()->info(print_r($args, true));
          if($sender->getName() !== "CONSOLE") {
             $player = $sender->getServer()->getPlayer($sender->getName());
-            $level  = $sender->getServer()->getPlayer($sender->getName())->getLevel()->getName();
+            $level  = strtolower($sender->getServer()->getPlayer($sender->getName())->getLevel()->getName());
             $mode   = '';
             switch($command->getName()) {
+               case "unprotect":
+                   if(count($args)!=1)
+                   {
+                      $sender->sendMessage(TextFormat::RED . "[wwProtect] usage /uprotect name");
+                   }
+                   $protect_name=$this->db->real_escape_string($args[0]);
+                   $level = strtolower($player->getLevel()->getName());
+                   if(!isset($this->config) && isset($this->config[$level]))
+                   {
+                       if(!array_key_exists ($protect_name,$this->config[$level]))
+                       {
+                          $sender->sendMessage(TextFormat::GREEN . "[wwProtect] deleting protect " . $protect_name);
+                          unset($this->config[$level][$protect_name]);
+                       }
+                       else
+                       {
+                          $sender->sendMessage(TextFormat::RED . "[wwProtect] not found protect " . $protect_name);
+                       }
+                   }
+                   else
+                   {
+                      $sender->sendMessage(TextFormat::RED . "[wwProtect] not found protect " . $protect_name);
+                   }
+                   
+                   $query="DELETE Protect WHERE name='$protect_name'";
+                   $this->db->query($query);
+                   return true;
                case "protect":
                   if(count($args) == 1) {
+                     //$this->getLogger()->info("Args == 1");
                      $args = strtolower($args[0]);
                      if($args == 'pos1') {
-                        if(! isset($this->tmp_store[$user])) $this->tmp_store[$user] = array();
+                        if(!isset($this->tmp_store[$user])) $this->tmp_store[$user] = array();
                         $this->tmp_store[$user][1] = array(0 => $player->getFloorX(), 1 => $player->getFloorY(), 2 => $player->getFloorZ(), 'level' => $player->getLevel()->getName());
-                        $sender->sendMessage("protect first point: " . implode(", ",$this->tmp_store[$user][1] ));
+                        $sender->sendMessage("protect first point: " . implode(", ", $this->tmp_store[$user][1]));
+                        return true;
                      } else if($args == 'pos2') {
-                        if(! isset($this->tmp_store[$user])) $this->tmp_store[$user] = array();
+                        if(!isset($this->tmp_store[$user])) $this->tmp_store[$user] = array();
                         $this->tmp_store[$user][2] = array(0 => $player->getFloorX(), 1 => $player->getFloorY(), 2 => $player->getFloorZ(), 'level' => $player->getLevel()->getName());
-                        $sender->sendMessage("protect two point: " . implode(", ",$this->tmp_store[$user][2] ));
+                        $sender->sendMessage("protect two point: " . implode(", ", $this->tmp_store[$user][2]));
+                        return true;
                      } else if($args == 'g') {
                         $sender->sendMessage(TextFormat::RED . "/protect g: <Group Name>\n\tplease set group name");
+                        return true;
+                     } else if($args == 'ls'){
+                        $this->getLogger()->info(print_r($this->config,true));
+                        return true;
                      } else {
                         $sender->sendMessage($command->getUsage());
+                        return true;
                      }
-                     return;
                   } else if(count($args) == 2) {
+                    // $this->getLogger()->info("Args == 2");
                      $mode  = strtolower(array_shift($args));
                      $group = strtolower(array_shift($args));
-                  } 
-                  if(count($args) == 0 || $mode == 'g') {
+                  }
+                  if($mode == 'g') {
+                     if(!$this->inGroup($user, $group)) {
+                           $sender->sendMessage("[wwGroups] Access denied for private region of group $group");
+                           return true;
+                     }
                      $this->getLogger()->info("Pos1: " . implode(", ", $this->tmp_store[$user][1]));
                      $this->getLogger()->info("Pos2: " . implode(", ", $this->tmp_store[$user][2]));
                      $pos1 = $this->tmp_store[$user][1];
@@ -150,9 +187,9 @@
                         $this->config[$level]["g:" . $group] = array("protect" => true, "min" => $min, "max" => $max);
                      }
 
-                     if(! $sender->getServer()->isOp($sender->getName()))
-                        if(($maxX - $minX) * ($maxY - $minY) * ($maxZ - $minZ) >= 12000) {
-                           $sender->sendMessage(TextFormat::GOLD . "[wwProtect] Can't protect. Max area 12000 blocks (e.g. 15x28x28)");
+                     if(!$sender->getServer()->isOp($sender->getName()))
+                        if(($maxX - $minX) * ($maxY - $minY) * ($maxZ - $minZ) >= 125000) {
+                           $sender->sendMessage(TextFormat::GOLD . "[wwProtect] Can't protect. Max area 125000 blocks (e.g. 50x50x50)");
                            break;
                         }
                      $members = json_encode(array($user));
@@ -199,6 +236,10 @@
                      $this->db->query($query);
                      $sender->sendMessage("[wwProtect] Protected this area ($minX, $minY, $minZ)-($maxX, $maxY, $maxZ) : $level");
                   } else if($mode = 'share') {
+                     if(!isset($group)){
+                        $sender->sendMessage("[wwProtect] group not setted");
+                        return true;
+                     }
                      if($this->inGroup($user, $group)) {
                         $this->config[$level]["g:$group"] = $this->config[$level][$user];
                         $this->db->query("UPDATE Protect SET `name`='g:$group' WHERE `name`='user'");
@@ -218,7 +259,7 @@
                      $group = strtolower(array_shift($args));
                      switch($cmd) {
                         case "rm":
-                           if($this->inGroup($user, $group) || $sender->isOp()) {
+                           if($this->inGroup($sender->getName(), $group) || $sender->isOp()) {
                               $this->groups[$group] = array($user);
                               foreach($this->groups[$group] as $player) {
                                  if($sender->getServer()->getPlayer($player)->isOnline())
@@ -231,8 +272,12 @@
                            }
                            return true;
                         case "add":
-                           $this->groups[$group] = array($user);
-                           $this->saveGroup($group);
+                           if(!array_key_exists ($group,$this->groups)){
+                              $this->groups[$group] = array($user);
+                              $this->saveGroup($group);
+                           }else{
+                              $sender->sendMessage("[wwGroups] Group exist");
+                           }
                            return true;
                         case "ls":
                            if($sender->isOp()) {
@@ -249,7 +294,7 @@
                      $group = strtolower(array_shift($args));
                      switch($cmd) {
                         case "rm":
-                           if($this->inGroup($user, $group) || $sender->isOp()) {
+                           if($this->inGroup($sender->getName(), $group) || $sender->isOp()) {
                               if($sender->getServer()->getPlayer($player)->isOnline())
                                  $sender->getServer()->getPlayer($player)->sendMessage("[wwGroups] You removed from group $group");
                               unset($this->groups[$group][$user]);
@@ -259,9 +304,10 @@
                            }
                            return true;
                         case "add":
-                           if($this->inGroup($user, $group) || $sender->isOp()) {
-                              if($sender->getServer()->getPlayer($player)->isOnline())
-                                 $sender->getServer()->getPlayer($player)->sendMessage("[wwGroups] You added to group $group");
+                           if($this->inGroup($sender->getName(), $group) || $sender->isOp()) {
+                              $player=$sender->getServer()->getPlayer($player);
+                              if($player!=null && $player->isOnline())
+                                 $player->sendMessage("[wwGroups] You added to group $group");
                               $this->groups[$group][] = $user;
                               $this->saveGroup($group);
                            } else {
@@ -285,19 +331,22 @@
 
       private function saveGroup($name)
       {
-         $members = json_encode($this->config[$name]);
-         $this->db->query("
+         $members = json_encode($this->groups[$name]);
+         $q="
            INSERT INTO groups
                   (`name`, members)
            VALUES
                    ('$name','$members')
            ON DUPLICATE KEY UPDATE
                    members='$members';
-           ");
+           ";
+           $this->getLogger()->info("Save group $name SQL: '$q'");
+           $this->db->query($q);
       }
 
       private function inGroup($user, $group)
       {
+         $this->getLogger()->info("Test $user exist in group $group");
          return in_array($user, $this->groups[$group]);
       }
 
@@ -317,21 +366,31 @@
        *
        * @priority MONITOR
        */
-      public function onBlockBreak(BlockBreakEvent $event){
-          if($event->getPlayer() instanceof Player and !$this->checkProtect($event->getPlayer(), $event->getBlock())){
-              $event->setCancelled(true);
-          }
+      public function onBlockBreak(BlockBreakEvent $event)
+      {
+         //$this->getLogger()->info("BlockBreakEvent " . $event->getPlayer()->getName() . " ");
+         if(!$this->checkProtect($event->getPlayer(), $event->getBlock())) {
+            //$this->getLogger()->info("BlockBreakEvent canceling");
+            $event->setCancelled(true);
+         } else {
+            //$this->getLogger()->info("BlockBreakEvent aproved");
+         }
       }
-    
+
       /**
        * @param BlockPlaceEvent $event
        *
        * @priority MONITOR
        */
-      public function onBlockPlace(BlockPlaceEvent $event){
-          if($event->getPlayer() instanceof Player and !$this->checkProtect($event->getPlayer(), $event->getBlock())){
-              $event->setCancelled(true);
-          }
+      public function onBlockPlace(BlockPlaceEvent $event)
+      {
+         //$this->getLogger()->info("BlockPlaceEvent " . $event->getPlayer()->getName() . " ");
+         if(!$this->checkProtect($event->getPlayer(), $event->getBlock())) {
+            //$this->getLogger()->info("BlockPlaceEvent canceling");
+            $event->setCancelled(true);
+         } else {
+           // $this->getLogger()->info("BlockPlaceEvent aproved");
+         }
       }
 
       /**
@@ -339,42 +398,53 @@
        *
        * @priority MONITOR
        */
-      public function onPlayerInteract(PlayerInteractEvent $event){
-          if($event->getPlayer() instanceof Player and !$this->checkProtect($event->getPlayer(), $event->getBlock())){
-              $event->setCancelled(true);
-          }
+      public function onPlayerInteract(PlayerInteractEvent $event)
+      {
+         //$this->getLogger()->info("PlayerInteractEvent " . $event->getPlayer()->getName() . " ");
+         if(!$this->checkProtect($event->getPlayer(), $event->getBlock())) {
+            //$this->getLogger()->info("PlayerInteractEvent canceling");
+            $event->setCancelled(true);
+         } else {
+         //   $this->getLogger()->info("PlayerInteractEvent aproved");
+         }
       }
+
       private function checkProtect(Player $player, $block)
       {
-
-         $level = $player->getLevel()->getName();
-         if(isset($this->config) && isset($this->config[$level]))
+         $level = strtolower($player->getLevel()->getName());
+         if(isset($this->config) && isset($this->config[$level])) {
             foreach($this->config[$level] as $name => $config) {
-               if(! $config['protect'] or $name == $player->getName())
+               //$this->getLogger()->info("[wwProtect] " . print_r($config));
+               if(!$config['protect'] or $name == strtolower($player->getName()))
                   continue;
                if($this->checkCoordinates($player, $block, $name))
                   return false;
             }
+         } else {
+            $this->getLogger()->info("[wwProtect] Config error or not created for level $level");
+         }
          return true;
       }
 
       private function checkCoordinates(Player $player, $block, $name)
       {
          //Спецгруппа Sa
-         if(isset($this->groups['Sa'])){
+         if(isset($this->groups['Sa'])) {
             if(in_array(strtolower($player->getName()), $this->groups['Sa'])) {
+               //$this->getLogger()->info("[wwProtect] SA access");
                return false;
             }
-        }
+         }
          $level = strtolower($player->getLevel()->getName());
-         if(isset($this->config[$level])){
+         //$this->getLogger()->info("[wwProtect] ".print_r($this->config[$level][$name]));
+         if(isset($this->config[$level])) {
             if($this->config[$level][$name]['min'][0] <= $block->getFloorX() and $block->getFloorX() <= $this->config[$level][$name]['max'][0]) {
                if($this->config[$level][$name]['min'][1] <= $block->getFloorY() and $block->getFloorY() <= $this->config[$level][$name]['max'][1]) {
                   if($this->config[$level][$name]['min'][2] <= $block->getFloorZ() and $block->getFloorZ() <= $this->config[$level][$name]['max'][2]) {
                      if(substr($name, 0, 2) == "g:") {
                         //Группы храним в отдельной таблице но вместе с основным кодом
                         if(isset($this->groups[substr($name, 2)]) && is_array($this->groups[substr($name, 2)]))
-                           if(! in_array(strtolower($player->getName()), $this->groups[substr($name, 2)])) {
+                           if(!in_array(strtolower($player->getName()), $this->groups[substr($name, 2)])) {
                               $name = substr($name, 2);
                               $player->sendMessage("[wwProtect] This is Group $name's private area.");
                               return true;

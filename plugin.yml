@@ -9,6 +9,10 @@ commands:
   permission: wwProtect.command.protect
   description: Shows list wwProtector commands
   usage: "/protect <pos1|pos2|   > [<g> <Group Name>] [<share> <Group Name>] [<pvp> <on|off>] [<lock> <on|off>]"
+ unprotect:
+  permission: wwProtect.command.unprotect
+  description: Remove protect
+  usage: "/unprotect Protect name (with g: for group)"
  sprotect:
   permission: wwProtect.command.sprotect
   description: Special console command
@@ -36,6 +40,9 @@ permissions:
      wwProtect.command.protect:
       default: true #allowed for everyone
       description: Allows create new private area
+     wwProtect.command.unprotect:
+      default: op #allowed for OP's only
+      description: Remove protect's
  wwGroups:
   default: op
   description: Allows all commands of wwGroups
@@ -45,5 +52,5 @@ permissions:
     description: Allows using all the wwGroups commands
     children:
      wwGroups.command.group:
-      default: true
+      default: op
       description: Allows players to wwProtect.group command

@@ -136,7 +136,8 @@
 					case "protect":
 					$mode="";
 					$group="";
-					if(count($args) == 1) {
+					if(count($args) == 1) 
+					{
 						//$this->getLogger()->info("Args == 1");
 						$args = strtolower($args[0]);
 						if($args == 'pos1') {
@@ -179,14 +180,31 @@
 						// $this->getLogger()->info("Args == 2");
 						$mode  = strtolower(array_shift($args));
 						$group = strtolower(array_shift($args));
+						if($mode == 'share') 
+						{
+							if(!isset($group))
+							{
+								$sender->sendMessage("[wwProtect] group not setted");
+								return true;
+							}
+							if($this->inGroup($user, $group)) 
+							{
+								$this->config[$level]["g:$group"] = $this->config[$level][$user];
+								$this->db->query("UPDATE Protect SET `name`='g:$group' WHERE `name`='user'");
+							}
+							return true;
+						} 
+						
 					}
-					if($mode == 'g') {
+					if($mode == 'g') 
+					{
 						if(!$this->inGroup($user, $group)) 
 						{
 							$sender->sendMessage("[wwGroups] Access denied for private region of group $group");
 							return true;
 						}
 					}
+					
 					$this->getLogger()->info("Pos1: " . implode(", ", $this->tmp_store[$user][1]));
 					$this->getLogger()->info("Pos2: " . implode(", ", $this->tmp_store[$user][2]));
 					$pos1 = $this->tmp_store[$user][1];
@@ -269,285 +287,271 @@
 					}
 					$this->db->query($query);
 					$sender->sendMessage("[wwProtect] Protected this area ($minX, $minY, $minZ)-($maxX, $maxY, $maxZ) : $level");
-				} 
-				else if($mode == 'share') 
-				{
-					if(!isset($group))
-					{
-						$sender->sendMessage("[wwProtect] group not setted");
-						return true;
-					}
-					if($this->inGroup($user, $group)) 
-					{
-						$this->config[$level]["g:$group"] = $this->config[$level][$user];
-						$this->db->query("UPDATE Protect SET `name`='g:$group' WHERE `name`='user'");
-					}
-				} 
-				else 
-				{
+					
 					$sender->sendMessage($command->getUsage());
-				}
-				return true;
-				case "sprotect":
-				$sender->sendMessage(TextFormat::RED . "For Console use only");
-				return true;
-				case "group":
-				if(count($args) == 0 || (count($args) == 1 && $args[0] = 'ls')) 
-				{
-					$sender->sendMessage("[wwGroups] " . implode(", ", array_keys($this->groups)));
-				} 
-				else if(count($args) == 2) 
-				{
-					$cmd   = strtolower(array_shift($args));
-					$group = strtolower(array_shift($args));
-					switch($cmd) 
+					return true;
+					case "sprotect":
+					$sender->sendMessage(TextFormat::RED . "For Console use only");
+					return true;
+					case "group":
+					if(count($args) == 0 || (count($args) == 1 && $args[0] = 'ls')) 
 					{
-						case "rm":
-						if($this->inGroup($sender->getName(), $group) || $sender->isOp()) 
+						$sender->sendMessage("[wwGroups] " . implode(", ", array_keys($this->groups)));
+					} 
+					else if(count($args) == 2) 
+					{
+						$cmd   = strtolower(array_shift($args));
+						$group = strtolower(array_shift($args));
+						switch($cmd) 
 						{
-							$this->groups[$group] = array($user);
-							foreach($this->groups[$group] as $player) 
+							case "rm":
+							if($this->inGroup($sender->getName(), $group) || $sender->isOp()) 
 							{
-								if($sender->getServer()->getPlayer($player)->isOnline())
-								$sender->getServer()->getPlayer($player)->sendMessage("[wwGroups] Group $group removed");
-							}
-							unset($this->groups[$group]);
-							$this->db->query("DELETE FROM groups WHERE name='$group'");
-						} 
-						else 
-						{
-							$sender->sendMessage("[wwGroups] Access denied");
-						}
-						return true;
-						case "add":
-						if(!array_key_exists ($group,$this->groups))
-						{
-							$this->groups[$group] = array($user);
-							$this->saveGroup($group);
-						}
-						else
-						{
-							$sender->sendMessage("[wwGroups] Group exist");
-						}
-						return true;
-						case "ls":
-						if($sender->isOp()) 
-						{
-							$groups = $this->getUserGroups($group);
-							$sender->sendMessage("[wwGroups] " . implode(", ", $groups));
-						}
-						else 
-						{
-							$sender->sendMessage("[wwGroups] Access denied");
-						}
-						return true;
-					}
-				} 
-				else if(count($args) == 3)
-				{
-					$cmd   = strtolower(array_shift($args));
-					$user  = strtolower(array_shift($args));
-					$group = strtolower(array_shift($args));
-					switch($cmd) 
-					{
-						case "rm":
-						if($this->inGroup($sender->getName(), $group) || $sender->isOp()) 
-						{
-							if($sender->getServer()->getPlayer($player)->isOnline())
-							$sender->getServer()->getPlayer($player)->sendMessage("[wwGroups] You removed from group $group");
-							unset($this->groups[$group][$user]);
-							$this->saveGroup($group);
-						}
-						else 
-						{
-							$sender->sendMessage("[wwGroups] Access denied");
-						}
-						return true;
-						case "add":
-						if($this->inGroup($sender->getName(), $group) || $sender->isOp()) 
-						{
-							$player=$sender->getServer()->getPlayer($player);
-							if($player!=null && $player->isOnline())
-							$player->sendMessage("[wwGroups] You added to group $group");
-							$this->groups[$group][] = $user;
-							$this->saveGroup($group);
-						}
-						else 
-						{
-							$sender->sendMessage("[wwGroups] Access denied");
-						}
-						return true;
-					}
-				}
-				else 
-				{
-					$sender->sendMessage("[wwGroups] " . $command->getUsage());
-				}
-				return true;
-			}
-			} else {
-			switch($command->getName()) 
-			{
-				case "group":
-				$sender->sendMessage("[wwGroups] " . implode(", ", array_keys($this->groups)));
-				return true;
-			}
-		}
-	}
-	
-	private function saveGroup($name)
-	{
-		$members = json_encode($this->groups[$name]);
-		$q="
-		INSERT INTO groups
-		(`name`, members)
-		VALUES
-		('$name','$members')
-		ON DUPLICATE KEY UPDATE
-		members='$members';
-		";
-		$this->getLogger()->info("Save group $name SQL: '$q'");
-		$this->db->query($q);
-	}
-	
-	private function inGroup($user, $group)
-	{
-		$this->getLogger()->info("Test $user exist in group $group");
-		return in_array($user, $this->groups[$group]);
-	}
-	
-	
-	private function getUserGroups($user)
-	{
-		$groups = [];
-		foreach($this->groups as $name => $users)
-		{
-			if(in_array($user, $users))
-			$groups[] = $name;
-		}
-		return $groups;
-	}
-	
-	/**
-		* @param BlockBreakEvent $event
-		*
-		* @priority MONITOR
-	*/
-	public function onBlockBreak(BlockBreakEvent $event)
-	{
-		//$this->getLogger()->info("BlockBreakEvent " . $event->getPlayer()->getName() . " ");
-		if(!$this->checkProtect($event->getPlayer(), $event->getBlock())) {
-			//$this->getLogger()->info("BlockBreakEvent canceling");
-			$event->setCancelled(true);
-		}
-		else
-		{
-			//$this->getLogger()->info("BlockBreakEvent aproved");
-		}
-	}
-	
-	/**
-		* @param BlockPlaceEvent $event
-		*
-		* @priority MONITOR
-	*/
-	public function onBlockPlace(BlockPlaceEvent $event)
-	{
-		//$this->getLogger()->info("BlockPlaceEvent " . $event->getPlayer()->getName() . " ");
-		if(!$this->checkProtect($event->getPlayer(), $event->getBlock())) 
-		{
-			//$this->getLogger()->info("BlockPlaceEvent canceling");
-			$event->setCancelled(true);
-		}
-		else 
-		{
-			// $this->getLogger()->info("BlockPlaceEvent aproved");
-		}
-	}
-	
-	/**
-		* @param PlayerInteractEvent $event
-		*
-		* @priority MONITOR
-	*/
-	public function onPlayerInteract(PlayerInteractEvent $event)
-	{
-		//$this->getLogger()->info("PlayerInteractEvent " . $event->getPlayer()->getName() . " ");
-		if(!$this->checkProtect($event->getPlayer(), $event->getBlock())) 
-		{
-			//$this->getLogger()->info("PlayerInteractEvent canceling");
-			$event->setCancelled(true);
-		} 
-		else 
-		{
-			//   $this->getLogger()->info("PlayerInteractEvent aproved");
-		}
-	}
-	
-	private function checkProtect(Player $player, $block)
-	{
-		$level = strtolower($player->getLevel()->getName());
-		if(isset($this->config) && isset($this->config[$level])) 
-		{
-			foreach($this->config[$level] as $name => $config) 
-			{
-				//$this->getLogger()->info("[wwProtect] " . print_r($config));
-				if(!$config['protect'] or $name == strtolower($player->getName()))
-				continue;
-				if($this->checkCoordinates($player, $block, $name))
-				return false;
-			}
-		} 
-		else 
-		{
-			$this->getLogger()->info("[wwProtect] Config error or not created for level $level");
-		}
-		return true;
-	}
-	
-	private function checkCoordinates(Player $player, $block, $name)
-	{
-		//Спецгруппа Sa
-		if(isset($this->groups['Sa'])) 
-		{
-			if(in_array(strtolower($player->getName()), $this->groups['Sa'])) 
-			{
-				//$this->getLogger()->info("[wwProtect] SA access");
-				return false;
-			}
-		}
-		$level = strtolower($player->getLevel()->getName());
-		//$this->getLogger()->info("[wwProtect] ".print_r($this->config[$level][$name]));
-		if(isset($this->config[$level]))
-		{
-			if($this->config[$level][$name]['min'][0] <= $block->getFloorX() and $block->getFloorX() <= $this->config[$level][$name]['max'][0]) 
-			{
-				if($this->config[$level][$name]['min'][1] <= $block->getFloorY() and $block->getFloorY() <= $this->config[$level][$name]['max'][1]) 
-				{
-					if($this->config[$level][$name]['min'][2] <= $block->getFloorZ() and $block->getFloorZ() <= $this->config[$level][$name]['max'][2]) 
-					{
-						if(substr($name, 0, 2) == "g:") 
-						{
-							//Группы храним в отдельной таблице но вместе с основным кодом
-							if(isset($this->groups[substr($name, 2)]) && is_array($this->groups[substr($name, 2)]))
-							{
-								if(!in_array(strtolower($player->getName()), $this->groups[substr($name, 2)]))
+								$this->groups[$group] = array($user);
+								foreach($this->groups[$group] as $player) 
 								{
-									$name = substr($name, 2);
-									$player->sendMessage("[wwProtect] This is Group $name's private area.");
-									return true;
+									if($sender->getServer()->getPlayer($player)->isOnline())
+									$sender->getServer()->getPlayer($player)->sendMessage("[wwGroups] Group $group removed");
 								}
+								unset($this->groups[$group]);
+								$this->db->query("DELETE FROM groups WHERE name='$group'");
 							} 
 							else 
 							{
-								$player->sendMessage("[wwProtect] This is $name's private area.");
-								return true;
+								$sender->sendMessage("[wwGroups] Access denied");
+							}
+							return true;
+							case "add":
+							if(!array_key_exists ($group,$this->groups))
+							{
+								$this->groups[$group] = array($user);
+								$this->saveGroup($group);
+							}
+							else
+							{
+								$sender->sendMessage("[wwGroups] Group exist");
+							}
+							return true;
+							case "ls":
+							if($sender->isOp()) 
+							{
+								$groups = $this->getUserGroups($group);
+								$sender->sendMessage("[wwGroups] " . implode(", ", $groups));
+							}
+							else 
+							{
+								$sender->sendMessage("[wwGroups] Access denied");
+							}
+							return true;
+						}
+					} 
+					else if(count($args) == 3)
+					{
+						$cmd   = strtolower(array_shift($args));
+						$user  = strtolower(array_shift($args));
+						$group = strtolower(array_shift($args));
+						switch($cmd) 
+						{
+							case "rm":
+							if($this->inGroup($sender->getName(), $group) || $sender->isOp()) 
+							{
+								if($sender->getServer()->getPlayer($player)->isOnline())
+								$sender->getServer()->getPlayer($player)->sendMessage("[wwGroups] You removed from group $group");
+								unset($this->groups[$group][$user]);
+								$this->saveGroup($group);
+							}
+							else 
+							{
+								$sender->sendMessage("[wwGroups] Access denied");
+							}
+							return true;
+							case "add":
+							if($this->inGroup($sender->getName(), $group) || $sender->isOp()) 
+							{
+								$player=$sender->getServer()->getPlayer($player);
+								if($player!=null && $player->isOnline())
+								$player->sendMessage("[wwGroups] You added to group $group");
+								$this->groups[$group][] = $user;
+								$this->saveGroup($group);
+							}
+							else 
+							{
+								$sender->sendMessage("[wwGroups] Access denied");
+							}
+							return true;
+						}
+					}
+					else 
+					{
+						$sender->sendMessage("[wwGroups] " . $command->getUsage());
+					}
+					return true;
+				}
+			} 
+			else 
+			{
+				switch($command->getName()) 
+				{
+					case "group":
+					$sender->sendMessage("[wwGroups] " . implode(", ", array_keys($this->groups)));
+					return true;
+				}
+			}
+		}
+		
+		private function saveGroup($name)
+		{
+			$members = json_encode($this->groups[$name]);
+			$q="
+			INSERT INTO groups
+			(`name`, members)
+			VALUES
+			('$name','$members')
+			ON DUPLICATE KEY UPDATE
+			members='$members';
+			";
+			$this->getLogger()->info("Save group $name SQL: '$q'");
+			$this->db->query($q);
+		}
+		
+		private function inGroup($user, $group)
+		{
+			$this->getLogger()->info("Test $user exist in group $group");
+			return in_array($user, $this->groups[$group]);
+		}
+		
+		
+		private function getUserGroups($user)
+		{
+			$groups = [];
+			foreach($this->groups as $name => $users)
+			{
+				if(in_array($user, $users))
+				$groups[] = $name;
+			}
+			return $groups;
+		}
+		
+		/**
+			* @param BlockBreakEvent $event
+			*
+			* @priority MONITOR
+		*/
+		public function onBlockBreak(BlockBreakEvent $event)
+		{
+			//$this->getLogger()->info("BlockBreakEvent " . $event->getPlayer()->getName() . " ");
+			if(!$this->checkProtect($event->getPlayer(), $event->getBlock())) {
+				//$this->getLogger()->info("BlockBreakEvent canceling");
+				$event->setCancelled(true);
+			}
+			else
+			{
+				//$this->getLogger()->info("BlockBreakEvent aproved");
+			}
+		}
+		
+		/**
+			* @param BlockPlaceEvent $event
+			*
+			* @priority MONITOR
+		*/
+		public function onBlockPlace(BlockPlaceEvent $event)
+		{
+			//$this->getLogger()->info("BlockPlaceEvent " . $event->getPlayer()->getName() . " ");
+			if(!$this->checkProtect($event->getPlayer(), $event->getBlock())) 
+			{
+				//$this->getLogger()->info("BlockPlaceEvent canceling");
+				$event->setCancelled(true);
+			}
+			else 
+			{
+				// $this->getLogger()->info("BlockPlaceEvent aproved");
+			}
+		}
+		
+		/**
+			* @param PlayerInteractEvent $event
+			*
+			* @priority MONITOR
+		*/
+		public function onPlayerInteract(PlayerInteractEvent $event)
+		{
+			//$this->getLogger()->info("PlayerInteractEvent " . $event->getPlayer()->getName() . " ");
+			if(!$this->checkProtect($event->getPlayer(), $event->getBlock())) 
+			{
+				//$this->getLogger()->info("PlayerInteractEvent canceling");
+				$event->setCancelled(true);
+			} 
+			else 
+			{
+				//   $this->getLogger()->info("PlayerInteractEvent aproved");
+			}
+		}
+		
+		private function checkProtect(Player $player, $block)
+		{
+			$level = strtolower($player->getLevel()->getName());
+			if(isset($this->config) && isset($this->config[$level])) 
+			{
+				foreach($this->config[$level] as $name => $config) 
+				{
+					//$this->getLogger()->info("[wwProtect] " . print_r($config));
+					if(!$config['protect'] or $name == strtolower($player->getName()))
+					continue;
+					if($this->checkCoordinates($player, $block, $name))
+					return false;
+				}
+			} 
+			else 
+			{
+				$this->getLogger()->info("[wwProtect] Config error or not created for level $level");
+			}
+			return true;
+		}
+		
+		private function checkCoordinates(Player $player, $block, $name)
+		{
+			//Спецгруппа Sa
+			if(isset($this->groups['Sa'])) 
+			{
+				if(in_array(strtolower($player->getName()), $this->groups['Sa'])) 
+				{
+					//$this->getLogger()->info("[wwProtect] SA access");
+					return false;
+				}
+			}
+			$level = strtolower($player->getLevel()->getName());
+			//$this->getLogger()->info("[wwProtect] ".print_r($this->config[$level][$name]));
+			if(isset($this->config[$level]))
+			{
+				if($this->config[$level][$name]['min'][0] <= $block->getFloorX() and $block->getFloorX() <= $this->config[$level][$name]['max'][0]) 
+				{
+					if($this->config[$level][$name]['min'][1] <= $block->getFloorY() and $block->getFloorY() <= $this->config[$level][$name]['max'][1]) 
+					{
+						if($this->config[$level][$name]['min'][2] <= $block->getFloorZ() and $block->getFloorZ() <= $this->config[$level][$name]['max'][2]) 
+						{
+							if(substr($name, 0, 2) == "g:") 
+							{
+								//Группы храним в отдельной таблице но вместе с основным кодом
+								if(isset($this->groups[substr($name, 2)]) && is_array($this->groups[substr($name, 2)]))
+								{
+									if(!in_array(strtolower($player->getName()), $this->groups[substr($name, 2)]))
+									{
+										$name = substr($name, 2);
+										$player->sendMessage("[wwProtect] This is Group $name's private area.");
+										return true;
+									}
+								} 
+								else 
+								{
+									$player->sendMessage("[wwProtect] This is $name's private area.");
+									return true;
+								}
 							}
 						}
 					}
 				}
 			}
+			return false;
 		}
-		return false;
 	}
-}

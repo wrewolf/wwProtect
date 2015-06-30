@@ -387,6 +387,11 @@
 			{
 				switch($command->getName()) 
 				{
+					case "protect":
+					{
+						$sender->sendMessage("[wwGroups] " . print_r($this->config,true));
+						return true;
+					}
 					case "group":
 					{
 						$sender->sendMessage("[wwGroups] " . implode(", ", array_keys($this->groups)));

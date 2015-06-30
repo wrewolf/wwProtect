@@ -105,287 +105,282 @@
 				switch($command->getName()) 
 				{
 					case "unprotect":
-					if(count($args)!=1)
 					{
-						$sender->sendMessage(TextFormat::RED . "[wwProtect] usage /uprotect name");
-					}
-					$protect_name=$this->db->real_escape_string($args[0]);
-					$level = strtolower($player->getLevel()->getName());
-					if(!isset($this->config) && isset($this->config[$level]))
-					{
-						if(!array_key_exists ($protect_name,$this->config[$level]))
+						if(count($args)!=1)
 						{
-							$sender->sendMessage(TextFormat::GREEN . "[wwProtect] deleting protect " . $protect_name);
-							unset($this->config[$level][$protect_name]);
+							$sender->sendMessage(TextFormat::RED . "[wwProtect] usage /uprotect name");
+						}
+						$protect_name=$this->db->real_escape_string($args[0]);
+						$level = strtolower($player->getLevel()->getName());
+						if(!isset($this->config) && isset($this->config[$level]))
+						{
+							if(!array_key_exists ($protect_name,$this->config[$level]))
+							{
+								$sender->sendMessage(TextFormat::GREEN . "[wwProtect] deleting protect " . $protect_name);
+								unset($this->config[$level][$protect_name]);
+							}
+							else
+							{
+								$sender->sendMessage(TextFormat::RED . "[wwProtect] not found protect " . $protect_name);
+								return true;
+							}
 						}
 						else
 						{
 							$sender->sendMessage(TextFormat::RED . "[wwProtect] not found protect " . $protect_name);
 							return true;
 						}
-					}
-					else
-					{
-						$sender->sendMessage(TextFormat::RED . "[wwProtect] not found protect " . $protect_name);
+						
+						$query="DELETE Protect WHERE name='$protect_name'";
+						$this->db->query($query);
 						return true;
 					}
-					
-					$query="DELETE Protect WHERE name='$protect_name'";
-					$this->db->query($query);
-					return true;
 					case "protect":
-					$mode="";
-					$group="";
-					if(count($args) == 1) 
 					{
-						//$this->getLogger()->info("Args == 1");
-						$args = strtolower($args[0]);
-						if($args == 'pos1') {
-							if(!isset($this->tmp_store[$user])) 
+						$mode="";
+						$group="";
+						if(count($args) == 1) 
+						{
+							//$this->getLogger()->info("Args == 1");
+							$args = strtolower($args[0]);
+							if($args == 'pos1') {
+								if(!isset($this->tmp_store[$user])) 
+								{
+									$this->tmp_store[$user] = array();
+								}
+								$this->tmp_store[$user][1] = array(0 => $player->getFloorX(), 1 => $player->getFloorY(), 2 => $player->getFloorZ(), 'level' => $player->getLevel()->getName());
+								$sender->sendMessage("protect first point: " . implode(", ", $this->tmp_store[$user][1]));
+								return true;
+							} 
+							else if($args == 'pos2') 
 							{
-								$this->tmp_store[$user] = array();
-							}
-							$this->tmp_store[$user][1] = array(0 => $player->getFloorX(), 1 => $player->getFloorY(), 2 => $player->getFloorZ(), 'level' => $player->getLevel()->getName());
-							$sender->sendMessage("protect first point: " . implode(", ", $this->tmp_store[$user][1]));
-							return true;
-						} 
-						else if($args == 'pos2') 
-						{
-							if(!isset($this->tmp_store[$user])) 
+								if(!isset($this->tmp_store[$user])) 
+								{
+									$this->tmp_store[$user] = array();
+								}
+								$this->tmp_store[$user][2] = array(0 => $player->getFloorX(), 1 => $player->getFloorY(), 2 => $player->getFloorZ(), 'level' => $player->getLevel()->getName());
+								$sender->sendMessage("protect two point: " . implode(", ", $this->tmp_store[$user][2]));
+								return true;
+							} 
+							else if($args == 'g') 
 							{
-								$this->tmp_store[$user] = array();
-							}
-							$this->tmp_store[$user][2] = array(0 => $player->getFloorX(), 1 => $player->getFloorY(), 2 => $player->getFloorZ(), 'level' => $player->getLevel()->getName());
-							$sender->sendMessage("protect two point: " . implode(", ", $this->tmp_store[$user][2]));
-							return true;
-						} 
-						else if($args == 'g') 
-						{
-							$sender->sendMessage(TextFormat::RED . "/protect g <Group Name> \n\t please set group name");
-							return true;
-						} 
-						else if($args == 'ls')
-						{
-							$this->getLogger()->info(print_r($this->config,true));
-							return true;
-						}
-						else 
-						{
-							$sender->sendMessage($command->getUsage());
-							return true;
-						}
-					}
-					else if(count($args) == 2) 
-					{
-						// $this->getLogger()->info("Args == 2");
-						$mode  = strtolower(array_shift($args));
-						$group = strtolower(array_shift($args));
-						if($mode == 'share') 
-						{
-							if(!isset($group))
+								$sender->sendMessage(TextFormat::RED . "/protect g <Group Name> \n\t please set group name");
+								return true;
+							} 
+							else if($args == 'ls')
 							{
-								$sender->sendMessage("[wwProtect] group not setted");
+								$this->getLogger()->info(print_r($this->config,true));
 								return true;
 							}
-							if($this->inGroup($user, $group)) 
+							else 
 							{
-								$this->config[$level]["g:$group"] = $this->config[$level][$user];
-								$this->db->query("UPDATE Protect SET `name`='g:$group' WHERE `name`='user'");
+								$sender->sendMessage($command->getUsage());
+								return true;
 							}
-							return true;
-						} 
-						
-					}
-					if($mode == 'g') 
-					{
-						if(!$this->inGroup($user, $group)) 
-						{
-							$sender->sendMessage("[wwGroups] Access denied for private region of group $group");
-							return true;
 						}
-					}
-					
-					$this->getLogger()->info("Pos1: " . implode(", ", $this->tmp_store[$user][1]));
-					$this->getLogger()->info("Pos2: " . implode(", ", $this->tmp_store[$user][2]));
-					$pos1 = $this->tmp_store[$user][1];
-					$pos2 = $this->tmp_store[$user][2];
-					if($pos1['level'] != $pos2['level']) 
-					{
-						$sender->sendMessage(TextFormat::RED . "[wwProtect] Both point need locate in one map");
-						return true;
-					}
-					$minX = min($pos1[0], $pos2[0]);
-					$maxX = max($pos1[0], $pos2[0]);
-					$minY = min($pos1[1], $pos2[1]);
-					$maxY = max($pos1[1], $pos2[1]);
-					$minZ = min($pos1[2], $pos2[2]);
-					$maxZ = max($pos1[2], $pos2[2]);
-					$max  = array($maxX, $maxY, $maxZ);
-					$min  = array($minX, $minY, $minZ);
-					
-					if($mode == "") 
-					{
-						$this->config[$level][$user] = array("protect" => true, "min" => $min, "max" => $max);
-					} 
-					else 
-					{
-						$this->config[$level]["g:" . $group] = array("protect" => true, "min" => $min, "max" => $max);
-					}
-					
-					if(!$sender->getServer()->isOp($sender->getName()))
-					if(($maxX - $minX) * ($maxY - $minY) * ($maxZ - $minZ) >= 125000) 
-					{
-						$sender->sendMessage(TextFormat::GOLD . "[wwProtect] Can't protect. Max area 125000 blocks (e.g. 50x50x50)");
-						break;
-					}
-					$members = json_encode(array($user));
-					if($mode == "") 
-					{
-						$query                       = "INSERT INTO Protect
-						(`name`, members, `level`, x1, y1, z1, x2, y2, z2, enabled)
-						VALUES
-						('$user','$members','$level','$minX','$minY','$minZ','$maxX','$maxY','$maxZ','1')
-						ON DUPLICATE KEY UPDATE
-						`level`='$level',
-						members='$members',
-						x1='$minX',
-						y1='$minY',
-						z1='$minZ',
-						x2='$maxX',
-						y2='$maxY',
-						z2='$maxZ',
-						enabled='1'
-						";
-						$this->config[$level][$user] = array("protect" => true, "min" => $min, "max" => $max);
-					} 
-					else 
-					{
-						if($this->inGroup($user, $group) || $sender->isOp()) 
+						else if(count($args) == 2) 
 						{
-							$query                            = "INSERT INTO Protect
-							(`name`, members, `level`, x1, y1, z1, x2, y2, z2, enabled)
-							VALUES
-							('g:$group','$members','$level','$minX','$minY','$minZ','$maxX','$maxY','$maxZ','1')
-							ON DUPLICATE KEY UPDATE
-							`level`='$level',
-							members='$members',
-							x1='$minX',
-							y1='$minY',
-							z1='$minZ',
-							x2='$maxX',
-							y2='$maxY',
-							z2='$maxZ',
-							enabled='1'
-							";
-							$this->config[$level]["g:$group"] = array("protect" => true, "min" => $min, "max" => $max);
-						} 
-						else 
-						{
-							$query = "";
-							$sender->sendMessage("[wwGroups] Access denied to group $group");
-						}
-					}
-					$this->db->query($query);
-					$sender->sendMessage("[wwProtect] Protected this area ($minX, $minY, $minZ)-($maxX, $maxY, $maxZ) : $level");
-					
-					$sender->sendMessage($command->getUsage());
-					return true;
-					case "sprotect":
-					$sender->sendMessage(TextFormat::RED . "For Console use only");
-					return true;
-					case "group":
-					if(count($args) == 0 || (count($args) == 1 && $args[0] = 'ls')) 
-					{
-						$sender->sendMessage("[wwGroups] " . implode(", ", array_keys($this->groups)));
-					} 
-					else if(count($args) == 2) 
-					{
-						$cmd   = strtolower(array_shift($args));
-						$group = strtolower(array_shift($args));
-						switch($cmd) 
-						{
-							case "rm":
-							if($this->inGroup($sender->getName(), $group) || $sender->isOp()) 
+							// $this->getLogger()->info("Args == 2");
+							$mode  = strtolower(array_shift($args));
+							$group = strtolower(array_shift($args));
+							if($mode == 'share') 
 							{
-								$this->groups[$group] = array($user);
-								foreach($this->groups[$group] as $player) 
+								if(!isset($group))
 								{
-									if($sender->getServer()->getPlayer($player)->isOnline())
-									$sender->getServer()->getPlayer($player)->sendMessage("[wwGroups] Group $group removed");
+									$sender->sendMessage("[wwProtect] group not setted");
+									return true;
 								}
-								unset($this->groups[$group]);
-								$this->db->query("DELETE FROM groups WHERE name='$group'");
+								if($this->inGroup($user, $group)) 
+								{
+									$this->config[$level]["g:$group"] = $this->config[$level][$user];
+									$this->db->query("UPDATE Protect SET `name`='g:$group' WHERE `name`='user'");
+								}
+								return true;
+							} 
+							
+						}
+						if($mode == 'g') 
+						{
+							if(!$this->inGroup($user, $group)) 
+							{
+								$sender->sendMessage("[wwGroups] Access denied for private region of group $group");
+								return true;
+							}
+						}
+						
+						$this->getLogger()->info("Pos1: " . implode(", ", $this->tmp_store[$user][1]));
+						$this->getLogger()->info("Pos2: " . implode(", ", $this->tmp_store[$user][2]));
+						$pos1 = $this->tmp_store[$user][1];
+						$pos2 = $this->tmp_store[$user][2];
+						if($pos1['level'] != $pos2['level']) 
+						{
+							$sender->sendMessage(TextFormat::RED . "[wwProtect] Both point need locate in one map");
+							return true;
+						}
+						$minX = min($pos1[0], $pos2[0]);
+						$maxX = max($pos1[0], $pos2[0]);
+						$minY = min($pos1[1], $pos2[1]);
+						$maxY = max($pos1[1], $pos2[1]);
+						$minZ = min($pos1[2], $pos2[2]);
+						$maxZ = max($pos1[2], $pos2[2]);
+						$max  = array($maxX, $maxY, $maxZ);
+						$min  = array($minX, $minY, $minZ);
+						
+						if($mode == "") 
+						{
+							$this->config[$level][$user] = array("protect" => true, "min" => $min, "max" => $max);
+						} 
+						else if($mode == "g") 
+						{
+							$this->config[$level]["g:" . $group] = array("protect" => true, "min" => $min, "max" => $max);
+						}
+						else
+						{
+							$sender->sendMessage($command->getUsage());
+						}
+						
+						if(!$sender->getServer()->isOp($sender->getName()))
+						{
+						    if(($maxX - $minX) * ($maxY - $minY) * ($maxZ - $minZ) >= 125000) 
+						    {
+						    	$sender->sendMessage(TextFormat::GOLD . "[wwProtect] Can't protect. Max area 125000 blocks (e.g. 50x50x50)");
+						    	return true;
+							}
+						}
+						$members = json_encode(array($user));
+						if($mode == "") 
+						{
+							$query = "INSERT INTO Protect	(`name`, members, `level`, x1, y1, z1, x2, y2, z2, enabled)	VALUES ('$user','$members','$level','$minX','$minY','$minZ','$maxX','$maxY','$maxZ','1') ON DUPLICATE KEY UPDATE	`level`='$level', members='$members',	x1='$minX',	y1='$minY',	z1='$minZ',	x2='$maxX',	y2='$maxY',	z2='$maxZ',	enabled='1'";
+							$this->config[$level][$user] = array("protect" => true, "min" => $min, "max" => $max);
+						} 
+						else if($mode == "g")  
+						{
+							if($this->inGroup($user, $group) || $sender->isOp()) 
+							{
+								$query = "INSERT INTO Protect (`name`, members, `level`, x1, y1, z1, x2, y2, z2, enabled) VALUES ('g:$group','$members','$level','$minX','$minY','$minZ','$maxX','$maxY','$maxZ','1') ON DUPLICATE KEY UPDATE
+								`level`='$level', members='$members', x1='$minX', y1='$minY', z1='$minZ', x2='$maxX', y2='$maxY',
+								z2='$maxZ', enabled='1'";
+								$this->config[$level]["g:$group"] = array("protect" => true, "min" => $min, "max" => $max);
 							} 
 							else 
 							{
-								$sender->sendMessage("[wwGroups] Access denied");
+								$query = "";
+								$sender->sendMessage("[wwGroups] Access denied to group $group");
+								return true;
 							}
-							return true;
-							case "add":
-							if(!array_key_exists ($group,$this->groups))
-							{
-								$this->groups[$group] = array($user);
-								$this->saveGroup($group);
-							}
-							else
-							{
-								$sender->sendMessage("[wwGroups] Group exist");
-							}
-							return true;
-							case "ls":
-							if($sender->isOp()) 
-							{
-								$groups = $this->getUserGroups($group);
-								$sender->sendMessage("[wwGroups] " . implode(", ", $groups));
-							}
-							else 
-							{
-								$sender->sendMessage("[wwGroups] Access denied");
-							}
-							return true;
 						}
-					} 
-					else if(count($args) == 3)
-					{
-						$cmd   = strtolower(array_shift($args));
-						$user  = strtolower(array_shift($args));
-						$group = strtolower(array_shift($args));
-						switch($cmd) 
+						else
 						{
-							case "rm":
-							if($this->inGroup($sender->getName(), $group) || $sender->isOp()) 
-							{
-								if($sender->getServer()->getPlayer($player)->isOnline())
-								$sender->getServer()->getPlayer($player)->sendMessage("[wwGroups] You removed from group $group");
-								unset($this->groups[$group][$user]);
-								$this->saveGroup($group);
-							}
-							else 
-							{
-								$sender->sendMessage("[wwGroups] Access denied");
-							}
-							return true;
-							case "add":
-							if($this->inGroup($sender->getName(), $group) || $sender->isOp()) 
-							{
-								$player=$sender->getServer()->getPlayer($player);
-								if($player!=null && $player->isOnline())
-								$player->sendMessage("[wwGroups] You added to group $group");
-								$this->groups[$group][] = $user;
-								$this->saveGroup($group);
-							}
-							else 
-							{
-								$sender->sendMessage("[wwGroups] Access denied");
-							}
-							return true;
+							$sender->sendMessage($command->getUsage());
 						}
+						$this->db->query($query);
+						$sender->sendMessage("[wwProtect] Protected this area ($minX, $minY, $minZ)-($maxX, $maxY, $maxZ) : $level");
+						return true;
 					}
-					else 
+					case "sprotect":
 					{
-						$sender->sendMessage("[wwGroups] " . $command->getUsage());
+						$sender->sendMessage(TextFormat::RED . "For Console use only");
+						return true;
 					}
-					return true;
+					case "group":
+					{
+						if(count($args) == 0 || (count($args) == 1 && $args[0] = 'ls')) 
+						{
+							$sender->sendMessage("[wwGroups] " . implode(", ", array_keys($this->groups)));
+						} 
+						else if(count($args) == 2) 
+						{
+							$cmd   = strtolower(array_shift($args));
+							$group = strtolower(array_shift($args));
+							switch($cmd) 
+							{
+								case "rm":
+								if($this->inGroup($sender->getName(), $group) || $sender->isOp()) 
+								{
+									$this->groups[$group] = array($user);
+									foreach($this->groups[$group] as $player) 
+									{
+										if($sender->getServer()->getPlayer($player)->isOnline())
+										$sender->getServer()->getPlayer($player)->sendMessage("[wwGroups] Group $group removed");
+									}
+									unset($this->groups[$group]);
+									$this->db->query("DELETE FROM groups WHERE name='$group'");
+								} 
+								else 
+								{
+									$sender->sendMessage("[wwGroups] Access denied");
+								}
+								return true;
+								case "add":
+								if(!array_key_exists ($group,$this->groups))
+								{
+									$this->groups[$group] = array($user);
+									$this->saveGroup($group);
+								}
+								else
+								{
+									$sender->sendMessage("[wwGroups] Group exist");
+								}
+								return true;
+								case "ls":
+								if($sender->isOp()) 
+								{
+									$groups = $this->getUserGroups($group);
+									$sender->sendMessage("[wwGroups] " . implode(", ", $groups));
+								}
+								else 
+								{
+									$sender->sendMessage("[wwGroups] Access denied");
+								}
+								return true;
+							}
+						} 
+						else if(count($args) == 3)
+						{
+							$cmd   = strtolower(array_shift($args));
+							$user  = strtolower(array_shift($args));
+							$group = strtolower(array_shift($args));
+							switch($cmd) 
+							{
+								case "rm":
+								{
+									if($this->inGroup($sender->getName(), $group) || $sender->isOp()) 
+									{
+										if($sender->getServer()->getPlayer($player)->isOnline())
+										$sender->getServer()->getPlayer($player)->sendMessage("[wwGroups] You removed from group $group");
+										unset($this->groups[$group][$user]);
+										$this->saveGroup($group);
+									}
+									else 
+									{
+										$sender->sendMessage("[wwGroups] Access denied");
+									}
+									return true;
+								}
+								case "add":
+								{
+									if($this->inGroup($sender->getName(), $group) || $sender->isOp()) 
+									{
+										$player=$sender->getServer()->getPlayer($player);
+										if($player!=null && $player->isOnline())
+										$player->sendMessage("[wwGroups] You added to group $group");
+										$this->groups[$group][] = $user;
+										$this->saveGroup($group);
+									}
+									else 
+									{
+										$sender->sendMessage("[wwGroups] Access denied");
+									}
+									return true;
+								}
+							}
+						}
+						else 
+						{
+							$sender->sendMessage("[wwGroups] " . $command->getUsage());
+						}
+						return true;
+					}
 				}
 			} 
 			else 
@@ -393,8 +388,10 @@
 				switch($command->getName()) 
 				{
 					case "group":
-					$sender->sendMessage("[wwGroups] " . implode(", ", array_keys($this->groups)));
-					return true;
+					{
+						$sender->sendMessage("[wwGroups] " . implode(", ", array_keys($this->groups)));
+						return true;
+					}
 				}
 			}
 		}
@@ -554,4 +551,4 @@
 			}
 			return false;
 		}
-	}
+	}			

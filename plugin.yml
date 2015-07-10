@@ -13,6 +13,10 @@ commands:
   permission: wwProtect.command.unprotect
   description: Remove protect
   usage: "/unprotect Protect name (with g: for group)"
+ reloadprotect:
+  permission: wwProtect.command.reloadprotect
+  description: Reload protects from db
+  usage: "/reloadprotect"
  sprotect:
   permission: wwProtect.command.sprotect
   description: Special console command
@@ -43,6 +47,9 @@ permissions:
      wwProtect.command.unprotect:
       default: op #allowed for OP's only
       description: Remove protect's
+     wwProtect.command.reloadprotect
+      default: op #allowed for OP's only
+      description: Reload protect's
  wwGroups:
   default: op
   description: Allows all commands of wwGroups
